@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @Bot.on_callback_query(filters.regex('^home$'))
 @Bot.on_message(filters.command('start') & filters.private & filters.incoming)
-async def start_handler(cient: Bot, message: Message|CallbackQuery):
+async def start_handler(client: Bot, message: Message | CallbackQuery):
     text = (
         f"Hello {message.from_user.mention},\n\n"
         "Welcome to the JioSaavn Telegram Bot! "
@@ -24,14 +24,15 @@ async def start_handler(cient: Bot, message: Message|CallbackQuery):
     buttons = [[
         InlineKeyboardButton('My Father 🧑', url='https://t.me/TECHSCODER'),
         InlineKeyboardButton('About 📕', callback_data='about')
-        ],[
+    ], [
         InlineKeyboardButton('Help 💡', callback_data='help'),
         InlineKeyboardButton('Settings ⚙', callback_data='settings')
-        ]]
+    ]]
+    
     if isinstance(message, Message):
-        await message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons), quote=True)
+        await message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons), quote=True, disable_web_page_preview=True)
     else:
-        await message.message.edit(text, reply_markup=InlineKeyboardMarkup(buttons))
+        await message.message.edit(text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
 
 @Bot.on_callback_query(filters.regex('^help$'))
 @Bot.on_message(filters.command('help') & filters.private & filters.incoming)
