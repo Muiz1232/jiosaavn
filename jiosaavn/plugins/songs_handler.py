@@ -8,8 +8,7 @@ from api.jiosaavn import Jiosaavn
 from jiosaavn.config.settings import HOST, PORT
 
 from pyrogram import filters
-from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 
 logger = logging.getLogger(__name__)
 
@@ -64,50 +63,46 @@ async def handle_song_callback(client: Bot, callback: CallbackQuery):
     song_url = song_data.get('perma_url', f"https://jiosaavn.com/songs/{formatted_title}/{song_id}")
 
     text_data = [
-    f"**🎧 Song:** [{title}]({song_url})" if title else '',
-    f"**📚 Album:** [{album}]({album_url})" if album else '',
-    f"**🎵 Music:** {music}" if music else '',
-    f"**▶️ Plays:** {play_count:,}" if play_count else '',
-    f"**👨‍🎤 Singers:** {singers}" if singers else '',
-    f"**✍️ Lyricist:** {lyricists}" if lyricists else '',
-    f"**👫 Actors:** {actors}" if actors else '',
-    f"**📰 Language:** {language}" if language else '',
-    f"**📆 Release Date:** __{release_date}__" if release_date else '',
-    f"**📆 Release Year:** __{release_year}__" if not release_date and release_year else '',
-]
-text = "\n\n".join(filter(None, text_data))
+        f"**🎧 Song:** [{title}]({song_url})" if title else '',
+        f"**📚 Album:** [{album}]({album_url})" if album else '',
+        f"**🎵 Music:** {music}" if music else '',
+        f"**▶️ Plays:** {play_count:,}" if play_count else '',
+        f"**👨‍🎤 Singers:** {singers}" if singers else '',
+        f"**✍️ Lyricist:** {lyricists}" if lyricists else '',
+        f"**👫 Actors:** {actors}" if actors else '',
+        f"**📰 Language:** {language}" if language else '',
+        f"**📆 Release Date:** __{release_date}__" if release_date else '',
+        f"**📆 Release Year:** __{release_year}__" if not release_date and release_year else '',
+    ]
+    text = "\n\n".join(filter(None, text_data))
 
-# Construct the callback data for buttons
-if item_id:
-    back_button_callback_data = f"{search_type}#{item_id}"
-    if back_type:
-        back_button_callback_data += f"#{back_type}"
-else:
-    back_button_callback_data = f"search#{search_type}"
-
-# Create buttons
-buttons = [[
-    InlineKeyboardButton('Upload to TG 📤', callback_data=f'upload#{song_id}#song')
-], [
-    InlineKeyboardButton('🔙', callback_data=back_button_callback_data)
-], [
-    InlineKeyboardButton('Close ❌', callback_data="close")
-]]
-if more_info.get('has_lyrics') == 'true':
-    lyrics_id = song_data.get("id")
-    lyrics_button_callback_data = f"lyrics#{lyrics_id}#{song_id}#{search_type}"
     if item_id:
-        lyrics_button_callback_data += f"#{item_id}#{back_type}"
+        back_button_callback_data = f"{search_type}#{item_id}"
+        if back_type:
+            back_button_callback_data += f"#{back_type}"
+    else:
+        back_button_callback_data = f"search#{search_type}"
 
-    buttons[0].insert(0, InlineKeyboardButton("Lyrics 📃", callback_data=lyrics_button_callback_data))
+    buttons = [[
+        InlineKeyboardButton('Upload to TG 📤', callback_data=f'upload#{song_id}#song')
+    ], [
+        InlineKeyboardButton('🔙', callback_data=back_button_callback_data)
+    ], [
+        InlineKeyboardButton('Close ❌', callback_data="close")
+    ]]
+    if more_info.get('has_lyrics') == 'true':
+        lyrics_id = song_data.get("id")
+        lyrics_button_callback_data = f"lyrics#{lyrics_id}#{song_id}#{search_type}"
+        if item_id:
+            lyrics_button_callback_data += f"#{item_id}#{back_type}"
 
-# Send or edit the message with the image preview and text
-await msg.edit_media(
-    media=InputMediaPhoto(image_url, caption=text[:1024]),  # Caption length limited for safety
-    reply_markup=InlineKeyboardMarkup(buttons)
-)
+        buttons[0].insert(0, InlineKeyboardButton("Lyrics 📃", callback_data=lyrics_button_callback_data))
 
-    # required to create some traffic to koyeb to keep it running
+    await msg.edit_media(
+        media=InputMediaPhoto(image_url, caption=text[:1024]),  # Safety limit on caption length
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
     await Jiosaavn()._request_data(url=f"http://{HOST}:{PORT}")
 
 @Bot.on_callback_query(filters.regex(r"^lyrics#"))
@@ -132,7 +127,7 @@ async def lyrics(client: Bot, callback: CallbackQuery):
             pass
     else:
         await callback.answer("Sending a song lyrics document")
-        file_location = f"{response.get("snippet")} song lyrics.txt"
+        file_location = f"{response.get('snippet')} song lyrics.txt"
         with open(file_location, 'w') as f:
             f.write(lyrics)
 
@@ -141,4 +136,7 @@ async def lyrics(client: Bot, callback: CallbackQuery):
             document=file_location
         )
 
-        os.remove(file_location)
+        try:
+            os.remove(file_location)
+        except FileNotFoundError:
+            logger.warning(f"File {file_location} was not found for deletion.")
